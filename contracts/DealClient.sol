@@ -10,18 +10,10 @@ import {specific_authenticate_message_params_parse, specific_deal_proposal_cbor_
 
 
 contract MockMarket {
-    DealClient public dealClient;
-
-    constructor(address addr) {
-        dealClient = DealClient(addr);
-    }
-
-    // publish_storage_deals ??
-    function publish_deal(bytes memory raw_auth_params) public {
+    function publish_storage_deals(bytes memory raw_auth_params, address callee) public {
         // // calls standard filecoin receiver on message authentication api method number
-        // (bool success,) = callee.call(abi.encodeWithSignature("handle_filecoin_method(uint64,uint64,bytes)", 0, 2643134072, raw_auth_params));
-        // require(success, "client contract failed to authorize deal publish");
-        dealClient.handle_filecoin_method(0, 2643134072, raw_auth_params);
+        (bool success,) = callee.call(abi.encodeWithSignature("handle_filecoin_method(uint64,uint64,bytes)", 0, 2643134072, raw_auth_params));
+        require(success, "client contract failed to authorize deal publish");
     }
 }
 
