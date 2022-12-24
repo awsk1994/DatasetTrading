@@ -72,7 +72,7 @@ contract DealClient {
         if (invested >= initialInvestmentTarget) {
             state = State.UPLOADING;
 
-            uint64 excess = initialInvestmentTarget - invested;
+            uint64 excess = invested - initialInvestmentTarget;
             if (excess > 0) {
                 payable(msg.sender).transfer(excess);
                 emit refundExcessE(msg.sender, uint64(msg.value));
@@ -107,6 +107,12 @@ contract DealClient {
         require(state == State.PURCHASABLE, "state must be 'PURCHASABLE' to run this");
         require(uint64(msg.value) == purchasePrice, "Money sent does not equal purchasePrice");
         purchasers.push(msg.sender);
+
+        uint dividend = purchasePrice/investors.length;
+        for (uint i=0; i<investors.length; i++) {
+            address investor = investors[i];
+            payable(investor).transfer(dividend);
+        }
     }
 
     // // @notice only purchasers, providers and investors have access
