@@ -4,29 +4,20 @@ const Web3 = require('web3');
 const web3 = new Web3(ganache.provider());
 const toBN = web3.utils.toBN;
 
-const {
-    DealClient,
-    MockMarket
-} = require('../../compile');
-
+const { DealClient, MockMarket } = require('../../compile');
 const DealClientAbi = DealClient.abi;
 const DealClientEvm = DealClient.evm;
 const MockMarketAbi = MockMarket.abi;
 const MockMarketEvm = MockMarket.evm;
 
-const testCID = "0x000181E2039220206B86B273FF34FCE19D6B804EFF5A3F5747ADA4EAA22F1D49C01E52DDB7875B4B";
-const testProvider = "0x0066";
 const testmessageAuthParams = '0x8240584c8bd82a5828000181e2039220206b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b190800f4420068420066656c6162656c0a1a0008ca0a42000a42000a42000a';
 
 const weiPerGwei = 1000000000;
 const gasPrice = 5 * weiPerGwei;
 const gasLimit = 1000000;
 
-const set_addr = "0xA235e3f07B934BcDe83f99fef19c6142EBCD7FAE";
-
 let accounts;
 let dealClient;
-let mockMarket;
 
 let provider;
 let investor1;
@@ -45,20 +36,20 @@ beforeEach(async () => {
     purchaser = accounts[4];
     purchaser2 = accounts[5];
 
-    dealClient = await new web3.eth.Contract(DealClientAbi, set_addr)
+    dealClient = await new web3.eth.Contract(DealClientAbi)
         .deploy({
             data: DealClientEvm.bytecode.object,
             arguments: ['SOME_DESCRIPTION', 'SOME_EXAMPLE', 100, 100],
         })
         .send({
             from: provider,
-            gasPrice: 8000000000,
-            gas: 4700000
+            gasPrice: gasPrice,
+            gas: 4700000,
         });
 });
 
 describe('DealClient', async () => {
-  it('check init values', async () => {
+  it('Check init values', async () => {
     assert.equal(await dealClient.methods.description().call(), 'SOME_DESCRIPTION');
     assert.equal(await dealClient.methods.example().call(), 'SOME_EXAMPLE');
     assert.equal(await dealClient.methods.initialInvestmentTarget().call(), 100);
@@ -90,8 +81,8 @@ describe('DealClient', async () => {
       await dealClient.methods.invest().send({
         from: investor2,
         value: 50,
-        gasPrice: gasPrice,   // TODO
-        gas: gasLimit,           // TODO
+        gasPrice: gasPrice,
+        gas: gasLimit,
       });
       // Check::should increment invested and change state to UPLOADING
       assert.equal(await dealClient.methods.invested().call(), 100);
@@ -151,7 +142,7 @@ describe('DealClient', async () => {
       assert.equal(purchasers.length, 1);
   });
 
-  it('Valid Case 2 --> excess invest, refund', async () => {
+  it('Valid Case 2::when excess invest, refund', async () => {
     invested = await dealClient.methods.invested().call()
     // Check::no eth invested
     assert.equal(invested, 0);
@@ -172,126 +163,111 @@ describe('DealClient', async () => {
     assert(actualDeductedFromInvestorBalance, '100')
   });
 
-  // it('Valid Case 3 --> investors invested, but provider cancels contract', async () => {
-  //   // investor1 invests 50%
-  //   await dealClient.methods.invest().send({
-  //     from: investor1,
-  //     value: 50,
-  //     gasPrice: 1000000000, // TODO
-  //     gas: 5000000, // TODO
-  //   });
-  //   // investor2 invests 50%
-  //   await dealClient.methods.invest().send({
-  //     from: investor2,
-  //     value: 40,
-  //     gasPrice: 1000000000, // TODO
-  //     gas: 5000000, // TODO
-  //   });
-  //   // contract is canceled
-  //   await dealClient.methods.cancel().send({
-  //     from: provider,
-  //     gasPrice: 1000000000, // TODO
-  //     gas: 5000000, // TODO
-  //   });
-  //   it('should change contract state', async() => {
-  //     assert.equal(await dealClient.methods.state().call(), 4);
-  //   });
-  //   it('should refund money to investors', async() => {
-  //       // check investor1 refunded 50
-  //       // check investor2 refunded 50
-  //   });
-  //   // TODO: check investor is refunded 10 excess (total paid = 100 wei)
-  // });
+  it('Valid Case 3::investors invested, but provider cancels contract', async () => {
+    // investor1 invests 50%
+    await dealClient.methods.invest().send({
+      from: investor1,
+      value: 50,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
+    // investor2 invests 50%
+    await dealClient.methods.invest().send({
+      from: investor2,
+      value: 40,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
 
-  // it('Authorization Error Case 1 --> investor tries to close contract', async () => {
-  //   hasError = false;
-  //   try {
-  //     await dealClient.methods.cancel().send({
-  //       from: investor1,
-  //       gasPrice: 1000000000, // TODO
-  //       gas: 5000000, // TODO
-  //     });
-  //   } catch (error) {
-  //     hasError = true;
-  //   }
-  //   it('should result in error', async() => {
-  //     assert.ok(hasError);
-  //   });
-  // });
+    let prevBalance1 = toBN(await web3.eth.getBalance(investor1));
+    let prevBalance2 = toBN(await web3.eth.getBalance(investor2));
 
-  // it('Authorization Error Case 2 --> purchaser tries to close contract', async () => {
-  //   hasError = false;
-  //   try {
-  //     await dealClient.methods.cancel().send({
-  //       from: purchaser,
-  //       gasPrice: 1000000000, // TODO
-  //       gas: 5000000, // TODO
-  //     });
-  //   } catch (error) {
-  //     hasError = true;
-  //   }
-  //   it('should result in error', async() => {
-  //     assert.ok(hasError);
-  //   });
-  // });
+    // contract is canceled
+    await dealClient.methods.cancel().send({
+      from: provider,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
 
-  // it('Authorization Error Case 3 --> investor and provider cannot purchase dataset', async () => {
-  //   // investor1 invests 50%
-  //   await dealClient.methods.invest().send({
-  //     from: investor1,
-  //     value: 100,
-  //     gasPrice: 8000000000, // TODO
-  //     gas: 4700000, // TODO
-  //   });
-  //   it('should increment invested, but state remains as INVESTING', async() => {
-  //     assert.equal(await dealClient.methods.invested().call(), 50);
-  //     assert.equal(await dealClient.methods.state().call(), 0);
-  //     purchasers = await dealClient.methods.getPurchasers().call();
-  //     assert.equal(purchasers.length, 1);
-  //   });
+    // Check::should change contract state
+    assert.equal(await dealClient.methods.state().call(), 4);
+    // Check::should refund money to investors
+    let nowBalance1 = toBN(await web3.eth.getBalance(investor1));
+    let nowBalance2 = toBN(await web3.eth.getBalance(investor2));
+    assert.equal(prevBalance1.sub(nowBalance1).toString(), '-50');
+    assert.equal(prevBalance2.sub(nowBalance2).toString(), '-40');
+  });
 
-  //   // Storage Provider uploaded data, and publishes deal
-  //   await dealClient.methods.handle_filecoin_method(0, 2643134072, testmessageAuthParams).send({
-  //     from: sp,
-  //   });
-  //   it('should change state to PURCHASABLE(enum=2)', async() => {
-  //     state = await dealClient.methods.state().call();
-  //     // check state change
-  //     assert.equal(state, 2)
-  //   });
+  it('Authorization Error Case 1::investor tries to close contract, but returns err', async () => {
+    let err;
+    try {
+      await dealClient.methods.cancel().send({
+        from: investor1,
+        gasPrice: gasPrice,
+        gas: gasLimit,
+      });
+    } catch(error) {
+      err=error;
+    };
+    assert.ok(typeof err != "undefined");
+  });
 
-  //   // investor purchases dataset
-  //   var hasError;
-  //   await dealClient.methods.purchase().send({
-  //     from: investor1,
-  //     value: 100,
-  //     gasPrice: 8000000000,   // TODO
-  //     gas: 4700000,           // TODO
-  //   }).on('error', function(error, receipt) {
-  //     hasError = true;
-  //     console.log("Expected Err", error, receipt);
-  //   });
-  //   it('should expect error', async() => {
-  //     assert.true(hasError);
-  //   });
+  it('Authorization Error Case 2::purchaser tries to close contract, but returns err', async () => {
+    let err;
+    try {
+      await dealClient.methods.cancel().send({
+        from: purchaser,
+        gasPrice: gasPrice,
+        gas: gasLimit,
+      });
+    } catch(error) {
+      err=error;
+    }
+    assert.ok(typeof err != "undefined");
+  });
 
-  //   // provider purchases dataset
-  //   var hasError;
-  //   await dealClient.methods.purchase().send({
-  //     from: provider,
-  //     value: 100,
-  //     gasPrice: 8 * weiPerGwei,
-  //     gas: 1000000,
-  //   }).on('error', function(error, receipt) {
-  //     hasError = true;
-  //     console.log("Expected Err", error, receipt);
-  //   });
-  //   it('should expect error', async() => {
-  //     assert.true(hasError);
-  //   });
-  // });
+  it('Authorization Error Case 3::investor and provider tries purchase dataset, but returns err', async () => {
+    // investor1 invests 50%
+    await dealClient.methods.invest().send({
+      from: investor1,
+      value: 100,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
+    // Storage Provider uploaded data, and publishes deal
+    await dealClient.methods.handle_filecoin_method(0, 2643134072, testmessageAuthParams).send({
+      from: sp,
+    });
+
+    // investor purchases dataset
+    let err;
+    try {
+      await dealClient.methods.purchase().send({
+        from: investor1,
+        value: 100,
+        gasPrice: gasPrice,
+        gas: gasLimit,
+      })
+    } catch(error) {
+      err=error;
+    }
+    // Check::err is not nil
+    assert.ok(typeof err != "undefined");
+
+    // provider purchases dataset
+    err = undefined;
+    assert.ok(typeof err == "undefined");
+    try {
+      await dealClient.methods.purchase().send({
+        from: provider,
+        value: 100,
+        gasPrice: gasPrice,
+        gas: gasLimit,
+      })
+    } catch(error) {
+      err=error;
+    }
+    // Check::err is not nil
+    assert.ok(typeof err != "undefined");
+  });
 });
-
-// TODO: verify payment and account balances - gas fee
-// var balance0 = await web3.eth.getBalance(investor1); //Will give value in.
-// console.log("before send money - balance", balance0);

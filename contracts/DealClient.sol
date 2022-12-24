@@ -99,6 +99,8 @@ contract DealClient {
             payable(investor).transfer(refund);
             emit refundE(investor, refund);
         }
+
+        state = State.CLOSED;
     }
 
     // @notice buyer purchases dataset (after uploaded to filecoin network)
@@ -106,6 +108,7 @@ contract DealClient {
         // TODO: data provider/investors cannot call this
         require(state == State.PURCHASABLE, "state must be 'PURCHASABLE' to run this");
         require(uint64(msg.value) == purchasePrice, "Money sent does not equal purchasePrice");
+        require(!existInvestor(msg.sender) && !existProvider(msg.sender), "sender is investor or provider, already have access, thus no need to purchase");
         purchasers.push(msg.sender);
 
         uint dividend = purchasePrice/investors.length;
