@@ -41,11 +41,11 @@ contract DealClient {
     address public provider;
     DealClientState public state;
 
-    bytes public SP;
-    bytes private cidRaw;
+    bytes public SP;        // TODO: change to private
+    bytes public cidRaw;    // TODO: change to private
 
-    constructor(string memory _description, string memory _example, uint64 _initialInvestmentTarget, uint64 _purchasePrice) {
-        provider = msg.sender;
+    constructor(string memory _description, string memory _example, uint64 _initialInvestmentTarget, uint64 _purchasePrice, address _provider) {
+        provider = _provider;
         state = DealClientState.INVESTING;
         description = _description;
         example = _example;
@@ -88,14 +88,12 @@ contract DealClient {
             uint64 refund = investments[investor];
             payable(investor).transfer(refund);
         }
-
         state = DealClientState.CLOSED;
     }
 
     // @notice buyer purchases dataset (after uploaded to filecoin network)
-    // TODO: divident should be based on investor's share(share = investor's investment / initialInvestmentTarget)
+    // TODO: dividends should be based on investor's share(share = investor's investment / initialInvestmentTarget)
     function purchase() public payable {
-        // TODO: data provider/investors cannot call this
         require(state == DealClientState.PURCHASABLE, "state must be 'PURCHASABLE' to run this");
         require(uint64(msg.value) == purchasePrice, "Money sent does not equal purchasePrice");
         require(!existInvestor(msg.sender) && !existProvider(msg.sender), 
@@ -111,6 +109,7 @@ contract DealClient {
 
     // @notice for provider to authorize cidraw and SP
     function authorizeSP(bytes calldata cidraw, bytes calldata _SP) public {
+        require(existProvider(msg.sender), "Only provider can authorize SP to publish deal");
         require(state == DealClientState.UPLOADING, "State must be 'loading' to run this");     
         SP = _SP;   
         cidRaw = cidraw;
@@ -118,10 +117,11 @@ contract DealClient {
 
     function handle_filecoin_method(uint64, uint64 method, bytes calldata params) public {
         if (method == AUTHORIZE_MESSAGE_METHOD_NUM) {
+            require(state == DealClientState.UPLOADING, "State must be 'uploading' to run this");
             bytes calldata deal_proposal_cbor_bytes = specific_authenticate_message_params_parse(params);
             specific_deal_proposal_cbor_parse(deal_proposal_cbor_bytes);
             (bytes calldata _cidraw, bytes calldata _SP,) = specific_deal_proposal_cbor_parse(deal_proposal_cbor_bytes);
-            require(keccak256(abi.encodePacked(SP)) == keccak256(abi.encodePacked(_SP)), "current _SP is not authorized");
+            require(keccak256(abi.encodePacked(SP)) == keccak256(abi.encodePacked(_SP)), "current SP is not authorized");
             require(keccak256(abi.encodePacked(cidRaw)) == keccak256(abi.encodePacked(_cidraw)), "cidraw does not match");
             state = DealClientState.PURCHASABLE;
         } else if (method == DATACAP_RECEIVER_HOOK_METHOD_NUM) {
