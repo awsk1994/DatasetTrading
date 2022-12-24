@@ -109,11 +109,11 @@ contract DealClient {
         purchasers.push(msg.sender);
     }
 
-    // @notice only purchasers, providers and investors have access
-    function getCID() public view returns (bytes memory) {
-        require(existPurchaser(msg.sender) || existPurchaser(msg.sender) || existProvider(msg.sender), "No authorization to call this. Only investors, provider or purchasers have access.");
-        return cidRaw;
-    }
+    // // @notice only purchasers, providers and investors have access
+    // function getCID() public view returns (bytes memory) {
+    //     require(existPurchaser(msg.sender) || existPurchaser(msg.sender) || existProvider(msg.sender), "No authorization to call this. Only investors, provider or purchasers have access.");
+    //     return cidRaw;
+    // }
 
     function existPurchaser(address addr) private view  returns (bool) {
         for (uint i=0; i<purchasers.length; i++) {
@@ -146,10 +146,6 @@ contract DealClient {
     }
 
     function handle_filecoin_method(uint64, uint64 method, bytes calldata params) public {
-        // dispatch methods
-           state = State.PURCHASABLE;
-           description = "123";
-
         if (method == AUTHORIZE_MESSAGE_METHOD_NUM) {
             bytes calldata deal_proposal_cbor_bytes = specific_authenticate_message_params_parse(params);
             specific_deal_proposal_cbor_parse(deal_proposal_cbor_bytes);
@@ -158,14 +154,18 @@ contract DealClient {
             // require(cidraw == cidRaw, "cidraw does not match");  // TODO
             emit publishDealE();
             state = State.PURCHASABLE;
-        // } else if (method == DATACAP_RECEIVER_HOOK_METHOD_NUM) {
-        //      emit ReceivedDataCap("DataCap Received!");
+        } else if (method == DATACAP_RECEIVER_HOOK_METHOD_NUM) {
+             emit ReceivedDataCap("DataCap Received!");
         } else {
              revert("the filecoin method that was called is not handled");
         }
     }
 
-    // function toBytes(address a) public pure returns (bytes memory) {
-    //     return abi.encodePacked(a);
-    // }
+    function getInvestors() public view returns (address[] memory) {
+        return investors;
+    }
+
+    function getPurchasers() public view returns (address[] memory) {
+        return purchasers;
+    }
 }
