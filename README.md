@@ -12,9 +12,16 @@ Similar to stock trading, but for datasets. Not really sure if there’s busines
 	* In the future, if someone purchases ‘access’ rights to this dataset, I will get a cut (similar to dividends). I can also transfer my share to other people (for some price possibly).
 
 ## Documentation
-
 https://docs.google.com/document/d/1Q0_zs0o1v3vUQdi2-Vm5QZXBHCwPrFAVkMkrwisUv10/edit?usp=sharing
 
+## Demo
+* Video: https://www.youtube.com/watch?v=fUVw6Xnq3Qw&feature=youtu.be
+* Goerli Test Network:
+	* Factory Contract Address: 0xdb6dB06e3bA8D1e0859E06cfF04177c624647EEc
+
+## Git Repo
+* Smart Contract: https://github.com/awsk1994/DatasetTrading
+* https://github.com/awsk1994/DatasetTrading_Webapp
 
 ## Deployment
 **Option A: use local ethereum network (ganache)**
@@ -60,7 +67,3 @@ https://docs.google.com/document/d/1Q0_zs0o1v3vUQdi2-Vm5QZXBHCwPrFAVkMkrwisUv10/
     * Once triggered, should see state == Purchasable
 6. As purchaser (change account in metamask), purchase
 7. As provider, close contract
-
-## Git Repo
-* Smart Contract: https://github.com/awsk1994/DatasetTrading
-* https://github.com/awsk1994/DatasetTrading_Webapp
