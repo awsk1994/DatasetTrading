@@ -81,7 +81,7 @@ describe('DealClient', async () => {
       // Check::should increment invested, but state remains as INVESTING
       assert.equal(await dealClient.methods.invested().call(), 50);
       assert.equal(await dealClient.methods.state().call(), 0);
-      // should add to investors list
+      // Check::should add to investors list
       investors = await dealClient.methods.getInvestors().call();
       assert.equal(investors.length, 1);
 
