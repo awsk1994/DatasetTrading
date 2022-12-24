@@ -40,7 +40,7 @@ beforeEach(async () => {
     dealClient = await new web3.eth.Contract(DealClientAbi)
         .deploy({
             data: DealClientEvm.bytecode.object,
-            arguments: ['SOME_DESCRIPTION', 'SOME_EXAMPLE', 100, 100],
+            arguments: ['SOME_DESCRIPTION', 'SOME_EXAMPLE', 100, 100, provider],
         })
         .send({
             from: provider,
@@ -62,7 +62,7 @@ describe('DealClient', async () => {
     assert.equal(investors.length, 0);  
   });
 
-  it('Valid Case 1', async () => {
+  it('Valid Case 1::invest -> authorize -> publishDeal -> purchase -> close', async () => {
       // investor1 invests 25%
       await dealClient.methods.invest().send({
         from: investor1,
@@ -154,6 +154,16 @@ describe('DealClient', async () => {
       // Check::purchase failed, should not add to purchaser1 list
       purchasers = await dealClient.methods.getPurchasers().call();
       assert.equal(purchasers.length, 1);
+
+      // Provider closes contract
+      await dealClient.methods.cancel().send({
+        from: provider,
+        gasPrice: gasPrice,
+        gas: gasLimit,
+      });
+      // Check::state changed to closed
+      state = await dealClient.methods.state().call();
+      assert.equal(state, 4)
   });
 
   it('Valid Case 2::when excess invest, refund', async () => {
@@ -339,6 +349,22 @@ describe('DealClient', async () => {
       // Storage Provider uploaded data, and publishes deal
       await dealClient.methods.handle_filecoin_method(0, 2643134072, testmessageAuthParams).send({
         from: sp,
+      });
+    } catch(error) {
+      err=error;
+    };
+    // Check::err is not nil
+    assert.ok(typeof err != "undefined");
+  });
+
+  it('Authorization Error Case 6::investor tries to close contract', async () => {
+    let err;
+    try {
+      // Provider cancel contract
+      await dealClient.methods.cancel().send({
+        from: investor1,
+        gasPrice: gasPrice,
+        gas: gasLimit,
       });
     } catch(error) {
       err=error;

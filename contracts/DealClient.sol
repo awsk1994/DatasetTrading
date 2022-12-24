@@ -80,9 +80,7 @@ contract DealClient {
     // @notice cancel smart contract, refund all investors
     function cancel() public {
         require(msg.sender == provider, "Only provider can close proposal");
-        require(state == DealClientState.INVESTING, "state must be 'INVESTING' to run this"); // TODO: what happens if cancel during 'PURCHASABLE'?
         state = DealClientState.REFUNDING;
-
         for (uint i=0; i<investors.length; i++) {
             address investor = investors[i];
             uint64 refund = investments[investor];
