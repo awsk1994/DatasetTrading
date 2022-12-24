@@ -4,13 +4,14 @@ const Web3 = require('web3');
 const web3 = new Web3(ganache.provider());
 const toBN = web3.utils.toBN;
 
-const { DealClient, MockMarket } = require('../../compile');
+const { DealClient, MockMarket } = require('../compile');
 const DealClientAbi = DealClient.abi;
 const DealClientEvm = DealClient.evm;
 const MockMarketAbi = MockMarket.abi;
 const MockMarketEvm = MockMarket.evm;
 
 const testmessageAuthParams = '0x8240584c8bd82a5828000181e2039220206b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b190800f4420068420066656c6162656c0a1a0008ca0a42000a42000a42000a';
+const testCID = '0x000181E2039220206B86B273FF34FCE19D6B804EFF5A3F5747ADA4EAA22F1D49C01E52DDB7875B4B';
 
 const weiPerGwei = 1000000000;
 const gasPrice = 5 * weiPerGwei;
@@ -23,7 +24,7 @@ let provider;
 let investor1;
 let investor2;
 let sp;
-let purchaser;
+let purchaser1;
 let purchaser2;
 
 beforeEach(async () => {
@@ -33,7 +34,7 @@ beforeEach(async () => {
     investor1 = accounts[1];
     investor2 = accounts[2];
     sp = accounts[3];
-    purchaser = accounts[4];
+    purchaser1 = accounts[4];
     purchaser2 = accounts[5];
 
     dealClient = await new web3.eth.Contract(DealClientAbi)
@@ -62,10 +63,17 @@ describe('DealClient', async () => {
   });
 
   it('Valid Case 1', async () => {
-      // investor1 invests 50%
+      // investor1 invests 25%
       await dealClient.methods.invest().send({
         from: investor1,
-        value: 50,
+        value: 25,
+        gasPrice: gasPrice,
+        gas: gasLimit,
+      });
+      // investor1 invests 25%
+      await dealClient.methods.invest().send({
+        from: investor1,
+        value: 25,
         gasPrice: gasPrice,
         gas: gasLimit,
       });
@@ -91,6 +99,12 @@ describe('DealClient', async () => {
       investors = await dealClient.methods.getInvestors().call();
       assert.equal(investors.length, 2);
 
+      await dealClient.methods.authorizeSP(testCID, '0x0066').send({
+        from: provider,
+        gasPrice: gasPrice,
+        gas: gasLimit,
+      });
+
       // Storage Provider uploaded data, and publishes deal
       await dealClient.methods.handle_filecoin_method(0, 2643134072, testmessageAuthParams).send({
         from: sp,
@@ -103,13 +117,13 @@ describe('DealClient', async () => {
       prevInvestor1Bal = await web3.eth.getBalance(investor1);
       prevInvestor2Bal = await web3.eth.getBalance(investor2);
       await dealClient.methods.purchase().send({
-        from: purchaser,
+        from: purchaser1,
         value: 100,
         gasPrice: gasPrice,
         gas: gasLimit,
       });
 
-      // Check::should add purchaser to purchasing list
+      // Check::should add purchaser1 to purchasers list
       purchasers = await dealClient.methods.getPurchasers().call();
       assert.equal(purchasers.length, 1);
 
@@ -137,7 +151,7 @@ describe('DealClient', async () => {
       keys = Object.keys(err['results'])
       assert.equal(err['results'][keys[0]]['reason'], 'Money sent does not equal purchasePrice');
 
-      // Check::purchase failed, should not add to purchaser list
+      // Check::purchase failed, should not add to purchaser1 list
       purchasers = await dealClient.methods.getPurchasers().call();
       assert.equal(purchasers.length, 1);
   });
@@ -212,11 +226,11 @@ describe('DealClient', async () => {
     assert.ok(typeof err != "undefined");
   });
 
-  it('Authorization Error Case 2::purchaser tries to close contract, but returns err', async () => {
+  it('Authorization Error Case 2::purchaser1 tries to close contract, but returns err', async () => {
     let err;
     try {
       await dealClient.methods.cancel().send({
-        from: purchaser,
+        from: purchaser1,
         gasPrice: gasPrice,
         gas: gasLimit,
       });
@@ -231,6 +245,12 @@ describe('DealClient', async () => {
     await dealClient.methods.invest().send({
       from: investor1,
       value: 100,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
+
+    await dealClient.methods.authorizeSP(testCID, '0x0066').send({
+      from: provider,
       gasPrice: gasPrice,
       gas: gasLimit,
     });
@@ -267,6 +287,62 @@ describe('DealClient', async () => {
     } catch(error) {
       err=error;
     }
+    // Check::err is not nil
+    assert.ok(typeof err != "undefined");
+  });
+
+  it('Authorization Error Case 4::unauthorized cid', async () => {
+    // investor1 invests 50%
+    await dealClient.methods.invest().send({
+      from: investor1,
+      value: 100,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
+
+    wrongCid = '0x000181E2039220206B86B273FF34FCE19D6B804EFF5A3F5747ADA4EAA22F1D49C01E52DDB7875B00'
+    await dealClient.methods.authorizeSP(wrongCid, '0x0066').send({
+      from: provider,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
+    let err;
+    try {
+      // Storage Provider uploaded data, and publishes deal
+      await dealClient.methods.handle_filecoin_method(0, 2643134072, testmessageAuthParams).send({
+        from: sp,
+      });
+    } catch(error) {
+      err=error;
+    };
+    // Check::err is not nil
+    assert.ok(typeof err != "undefined");
+  });
+
+  it('Authorization Error Case 5::unauthorized provider', async () => {
+    // investor1 invests 50%
+    await dealClient.methods.invest().send({
+      from: investor1,
+      value: 100,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
+
+    wrongProvider = '0x0001'
+    await dealClient.methods.authorizeSP(testCID, wrongProvider).send({
+      from: provider,
+      gasPrice: gasPrice,
+      gas: gasLimit,
+    });
+    let err;
+    try {
+      // Storage Provider uploaded data, and publishes deal
+      await dealClient.methods.handle_filecoin_method(0, 2643134072, testmessageAuthParams).send({
+        from: sp,
+      });
+    } catch(error) {
+      err=error;
+    };
     // Check::err is not nil
     assert.ok(typeof err != "undefined");
   });
