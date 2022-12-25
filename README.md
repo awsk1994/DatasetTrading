@@ -18,6 +18,8 @@ https://docs.google.com/document/d/1Q0_zs0o1v3vUQdi2-Vm5QZXBHCwPrFAVkMkrwisUv10/
 * Video: https://www.youtube.com/watch?v=fUVw6Xnq3Qw&feature=youtu.be
 * Goerli Test Network:
 	* Factory Contract Address: 0xdb6dB06e3bA8D1e0859E06cfF04177c624647EEc
+* Wallaby Test Network
+    * Factory Contract Address: 0x1444B99E789F8606931254bd3228Bc50a2051dcE
 
 ## Git Repo
 * Smart Contract: https://github.com/awsk1994/DatasetTrading
